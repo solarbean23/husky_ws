@@ -1,0 +1,218 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/solids/protos/SolidBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/trees/protos/Cypress.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/FireHydrant.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/Wall.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Roughcast.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/rocks/protos/Rock.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/SandyGround.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Grass.proto"
+EXTERNPROTO "../protos/Husky.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation 0.04512762884084421 0.10685788531130236 -0.9932496611940018 0.8039903807337851
+  position -15.867544486626764 14.085024628685611 1.599054997072308
+}
+TexturedBackground {
+  texture "noon_cloudy_countryside"
+  luminosity 2
+}
+TexturedBackgroundLight {
+}
+SolidBox {
+  translation 0 0 -2
+  name "box(2)"
+  size 25.25 25.25 3
+  appearance SandyGround {
+    textureTransform TextureTransform {
+      scale 30 15
+    }
+  }
+}
+SolidBox {
+  translation 0 0 -1.5
+  size 25 25 3
+  appearance Grass {
+    type "mossy"
+    textureTransform TextureTransform {
+      scale 15 7.5
+    }
+  }
+}
+FireHydrant {
+  translation -2 6 0
+  scale 0.5
+  name "fire_hydrant_1"
+}
+FireHydrant {
+  translation -2 -6 0
+  rotation 0 0 1 3.14159
+  scale 0.5
+  name "fire_hydrant_2"
+}
+Cypress {
+  translation 3.26 5.56 -0.1
+}
+Cypress {
+  translation 4.19 -3.97 0.01
+  name "cypress tree(1)"
+}
+Cypress {
+  translation 5.3 -6.37 -0.1
+  name "cypress tree(2)"
+}
+Cypress {
+  translation 6.22 2.88 -0.1
+  name "cypress tree(3)"
+}
+Cypress {
+  translation 6.77 -0.69 -0.1
+  name "cypress tree(4)"
+}
+Cypress {
+  translation -0.14 -4.42 -0.1
+  name "cypress tree(5)"
+}
+Cypress {
+  translation 2.24 1.14 -0.1
+  name "cypress tree(6)"
+}
+Wall {
+  translation -1.2 6 -0.2
+  size 0.1 1 1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Wall {
+  translation -1.2 -6 -0.2
+  name "wall(4)"
+  size 0.1 1 1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Wall {
+  translation -1.99995 6.55 -0.2
+  rotation 0 0 1 1.57
+  name "wall(2)"
+  size 0.1 1.7 1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Wall {
+  translation -1.99995 -6.55 -0.2
+  rotation 0 0 1 1.57
+  name "wall(6)"
+  size 0.1 1.7 1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Wall {
+  translation -2 6.6 0.85
+  rotation -0.5771962283175169 0.5776572284998716 -0.5771972283179124 -2.093935307179586
+  name "wall(3)"
+  size 0.1 1.7 1.1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Wall {
+  translation -1.99894 -5.5 0.85
+  rotation -0.5771962283175169 0.5776572284998716 -0.5771972283179124 -2.093935307179586
+  name "wall(7)"
+  size 0.1 1.7 1.1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Wall {
+  translation -2.8 6 -0.2
+  name "wall(1)"
+  size 0.1 1 1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Wall {
+  translation -2.8 -6 -0.2
+  name "wall(5)"
+  size 0.1 1 1
+  appearance Roughcast {
+    colorOverride 0.239216 0.219608 0.27451
+  }
+}
+Rock {
+  translation 2 -5 0
+  type "flat"
+  scale 3
+}
+Rock {
+  translation -2.5 -2 0
+  rotation 0 0 1 1.5708
+  name "rock(1)"
+  type "flat"
+  scale 2
+}
+Rock {
+  translation 0.45 3.5 0
+  rotation 0 1 0 0.523599
+  name "rock(2)"
+  scale 7
+}
+Rock {
+  translation 1.4645 -1.34947 0
+  rotation 0 0 1 0.785398
+  name "rock(3)"
+  type "flat"
+  scale 3
+}
+Rock {
+  translation 5 4 0
+  rotation 0 0 1 -2.3561953071795863
+  name "rock(4)"
+  type "flat"
+  scale 3
+}
+Husky {
+  translation -10 10 0.15
+  rotation 0 0 1 2.3562
+}
+DEF TRIANGLE_POLYGON Pose {
+  translation -9.36001 10.62 0.0315
+  rotation 0 0 1 -1.5707953071795862
+  children [
+    Transform {
+      translation 2.62 1.36 -0.0299
+      scale 15 15 1
+      children [
+        Shape {
+          appearance SandyGround {
+            textureTransform TextureTransform {
+              scale 10 5
+            }
+          }
+          geometry IndexedFaceSet {
+            coord Coordinate {
+              point [
+                -0.3 0.3 0
+                -0.3 -0.3 0
+                0.3 -0.3 0
+              ]
+            }
+            coordIndex [
+              0, 1, 2, -1
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
