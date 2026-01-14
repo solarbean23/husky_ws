@@ -13,8 +13,8 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 WorldInfo {
 }
 Viewpoint {
-  orientation 0.3076990170791105 0.7188522938124633 -0.6233559934492563 1.2034425131699025
-  position -37.80088259760774 28.35058729850199 57.74691190967041
+  orientation -0.09189611254506837 -0.16744727656885702 -0.9815887703456967 1.019637018209788
+  position -25.832146471345997 25.78120480583278 -0.35478646688821314
 }
 TexturedBackground {
   texture "noon_cloudy_countryside"
@@ -294,4 +294,40 @@ Oak {
   translation -4.09 -5.3 0
   rotation 0 0 1 -1.5707953071795862
   name "oak tree(6)"
+}
+DEF FIRE_1 Solid {
+  children [
+    Pose {
+      children [
+        Shape {
+          appearance Appearance {
+            material Material {
+              diffuseColor 0.878431 0.105882 0.141176
+              emissiveColor 0.647059 0.113725 0.176471
+              shininess 0.5
+              specularColor 0.878431 0.105882 0.141176
+              transparency 0.7
+            }
+          }
+          geometry Sphere {
+            radius 2
+            subdivision 3
+          }
+        }
+      ]
+    }
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 0.878431 0.105882 0.141176
+          emissiveColor 0.752941 0.109804 0.156863
+        }
+      }
+      geometry Sphere {
+        radius 0.1
+        subdivision 3
+      }
+    }
+  ]
+  name "Fire_1"
 }
