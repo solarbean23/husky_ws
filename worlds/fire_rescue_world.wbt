@@ -11,12 +11,13 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/Wall.proto"
 EXTERNPROTO "../protos/Fire_UGV.proto"
 EXTERNPROTO "../protos/Rescue_UGV.proto"
+EXTERNPROTO "../protos/Mavic2Pro.proto"
 
 WorldInfo {
 }
 Viewpoint {
-  orientation 0.3815293194672601 0.7947542079469648 -0.4720181430172381 1.5876806646215025
-  position -21.391579112366767 20.199736081707933 37.01045038183024
+  orientation 0.357773112631775 0.8064141922887872 -0.47084450761689245 1.5113522290889387
+  position -16.829997324679656 16.795778618707395 3.807622159554761
 }
 TexturedBackground {
   texture "noon_cloudy_countryside"
@@ -406,7 +407,13 @@ DEF Fire_UGV_1 Fire_UGV {
   name "Fire_UGV_1"
 }
 DEF Rescue_UGV_1 Rescue_UGV {
-  translation -20 14 0
+  translation -20 14 0.15
   rotation 0 0 1 -0.785395307179586
   name "Rescue_UGV_1"
+}
+DEF UAV Mavic2Pro {
+  translation -16.5 16.5 0.12
+  rotation 0 0 -1 0.785396
+  name "UAV"
+  controller "mavic_driver"
 }
