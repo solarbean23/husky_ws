@@ -4,10 +4,10 @@
 # This is a proto file for Webots for the Husky
 # Extracted from: /home/lsbean991/workspace/others/husky_file/husky/husky_description/urdf/husky.urdf
 
-PROTO Husky [
+PROTO Fire_UGV [
   field  SFVec3f     translation     0 0 0
   field  SFRotation  rotation        0 0 1 0
-  field  SFString    name            "Husky"  # Is `Robot.name`.
+  field  SFString    name            "Fire_UGV"  # Is `Robot.name`.
   field  SFString    controller      "<extern>"   # Is `Robot.controller`.
   field  MFString    controllerArgs  []       # Is `Robot.controllerArgs`.
   field  SFString    customData      ""       # Is `Robot.customData`.
@@ -206,7 +206,7 @@ PROTO Husky [
       Solid {
         children [
           DEF top_chassis_visual CadShape {
-            url "/home/lsbean991/workspace/others/husky_file/husky/husky_description/meshes/top_chassis.dae"
+            url "/home/lsbean991/workspace/others/husky_file/husky/husky_description/meshes/top_chassis_red.dae"
           }
         ]
         name "top_chassis_link"
@@ -251,28 +251,28 @@ PROTO Husky [
         physics Physics {
         }
       }
-      # Solid {
-      #   translation 0.081200 0.000000 0.294000
-      #   rotation 0.000000 0.000000 0.000000 0.000000
-      #   children [
-      #     DEF rplidar_visual CadShape {
-      #       url "/home/lsbean991/workspace/others/husky_file/husky/husky_description/meshes/rplidar.dae"
-      #     }
-      #     Lidar {
-      #       name "rplidar"
-      #       fieldOfView 6.283185 #2.094395 #6.283185 # 라디안 (= 360도)
-      #       horizontalResolution 512 # n등분?
-      #       numberOfLayers 1 # xy평면에 대한 라이다 정보 추출. 1이 아니면 xyz평면에 대한 정보
-      #       minRange 0.593700 # 측정 최소 범위
-      #       maxRange 12.000000 # 측정 최대 범위
-      #       near 0.593700 # Lidar 최소 측정 시작 범위
-      #     }
-      #   ]
-      #   name "rpLidar_link"
-      #   boundingObject USE lidar_mount_visual
-      #   physics Physics {
-      #   }
-      # }
+      Solid {
+        translation 0.25 0.000000 0.29  # 0.081200 0.000000 0.294000
+        rotation 0.000000 0.000000 0.000000 0.000000
+        children [
+          DEF rplidar_visual CadShape {
+            url "/home/lsbean991/workspace/others/husky_file/husky/husky_description/meshes/rplidar.dae"
+          }
+          Lidar {
+            name "scan"  # /scan 토픽으로 설정
+            fieldOfView 3.141593 #2.094395 #6.283185 # 라디안 (= 360도)
+            horizontalResolution 512 # 빔 개수
+            numberOfLayers 1 # xy평면에 대한 라이다 정보 추출. 1이 아니면 xyz평면에 대한 정보
+            minRange 0.400000 #0.593700 # 측정 최소 범위
+            maxRange 15.000000 # 측정 최대 범위
+            near 0.400000 # Lidar 최소 측정 시작 범위 (Husky 앞과의 거리에 맞춰 조정) 0.35정도긴 한데, 0.4로 맞춰보았음.
+          }
+        ]
+        name "rpLidar_link"
+        boundingObject USE rplidar_visual
+        physics Physics {
+        }
+      }
     ]
     name IS name
     boundingObject Group {
@@ -297,8 +297,8 @@ PROTO Husky [
     }
     physics Physics {
       density -1
-      mass 46.034000
-      centerOfMass [ -0.000650 -0.085000 0.062000 ]
+      mass 2.6 #46.034000
+      centerOfMass [ 0.000000 0.000000 0.060000 ] #[ -0.000650 -0.085000 0.062000 ]
       inertiaMatrix [
         6.022000e-01 1.738600e+00 2.029600e+00
         -2.364000e-02 -1.197000e-01 -1.544000e-03
