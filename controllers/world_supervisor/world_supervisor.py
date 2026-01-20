@@ -12,6 +12,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from std_srvs.srv import Empty
+from std_msgs.msg import Float32
 
 
 # -----------------------------
@@ -231,6 +232,7 @@ class WorldSupervisor(Node):
         
         # ====== publishers ======
         self.fire_publishers = {}
+        self.fire_radius_publishers = {}
         self.rescue_zone_publishers = {}
         self.water_publishers = {}
         self.base_publisher = None
@@ -292,6 +294,13 @@ class WorldSupervisor(Node):
             PoseStamped, topic_name, 1
         )
         self.get_logger().info(f"Created publisher: {topic_name}")
+        
+        # radius publisher도 생성
+        radius_topic_name = f"/world/fire/{def_name}/radius"
+        self.fire_radius_publishers[def_name] = self.create_publisher(
+            Float32, radius_topic_name, 1
+        )
+        self.get_logger().info(f"Created radius publisher: {radius_topic_name}")
     
     def _create_rescue_zone_publisher(self, def_name: str):
         """RescueZone object에 대한 publisher 생성"""
@@ -395,6 +404,11 @@ class WorldSupervisor(Node):
                 if publisher is not None:
                     self.destroy_publisher(publisher)
 
+                # radius publisher도 제거
+                radius_publisher = self.fire_radius_publishers.pop(def_name, None)
+                if radius_publisher is not None:
+                    self.destroy_publisher(radius_publisher)
+
                 service = self.remove_services.pop(def_name, None)
                 if service is not None:
                     self.destroy_service(service)
@@ -420,6 +434,25 @@ class WorldSupervisor(Node):
         return callback
 
     # -----------------------------
+    def _read_fire_radius(self, webots_node):
+        """Fire webots node에서 radius 읽기"""
+        try:
+            # Fire 구조: Pose -> children[0] Shape -> geometry Sphere -> radius
+            children_field = webots_node.getField("children")
+            if children_field.getCount() > 0:
+                shape_node = children_field.getMFNode(0)  # 첫 번째 Shape
+                if shape_node.getTypeName() == "Shape":
+                    geometry_field = shape_node.getField("geometry")
+                    geometry_node = geometry_field.getSFNode()
+                    if geometry_node.getTypeName() == "Sphere":
+                        radius_field = geometry_node.getField("radius")
+                        return radius_field.getSFFloat()
+        except Exception as e:
+            self.get_logger().warn(f"Failed to read radius from {webots_node.getDef()}: {e}")
+        
+        # 기본값 반환
+        return 2.0
+
     def _read_pose(self, webots_node):
         """webots node에서 pose 읽어서 PoseStamped 메시지로 변환"""
         translation = webots_node.getField("translation").getSFVec3f()
@@ -447,11 +480,19 @@ class WorldSupervisor(Node):
             return
         self.last_publish_time = now
 
-        # Fire poses
+        # Fire poses and radius
         for def_name, publisher in list(self.fire_publishers.items()):
             webots_node = self.fire_manager.get_webots_node(def_name)
             if webots_node:
                 publisher.publish(self._read_pose(webots_node))
+                
+                # 실제 radius 값 읽어서 publish
+                radius_publisher = self.fire_radius_publishers.get(def_name)
+                if radius_publisher:
+                    radius_value = self._read_fire_radius(webots_node)
+                    radius_msg = Float32()
+                    radius_msg.data = radius_value
+                    radius_publisher.publish(radius_msg)
 
         # RescueZone poses
         for def_name, publisher in list(self.rescue_zone_publishers.items()):
