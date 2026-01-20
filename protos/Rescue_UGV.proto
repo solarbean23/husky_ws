@@ -252,7 +252,7 @@ PROTO Rescue_UGV [
         }
       }
       Solid {
-        translation 0.25 0.000000 0.29  # 0.081200 0.000000 0.294000
+        translation 0.2 0.000000 0.25 #0.25 0.000000 0.29  # 0.081200 0.000000 0.294000
         rotation 0.000000 0.000000 0.000000 0.000000
         children [
           DEF rplidar_visual CadShape {
@@ -263,9 +263,9 @@ PROTO Rescue_UGV [
             fieldOfView 3.141593 #2.094395 #6.283185 # 라디안 (= 360도)
             horizontalResolution 512 # 빔 개수
             numberOfLayers 1 # xy평면에 대한 라이다 정보 추출. 1이 아니면 xyz평면에 대한 정보
-            minRange 0.400000 #0.593700 # 측정 최소 범위
+            minRange 0.350000 #0.593700 # 측정 최소 범위
             maxRange 15.000000 # 측정 최대 범위
-            near 0.400000 # Lidar 최소 측정 시작 범위 (Husky 앞과의 거리에 맞춰 조정) 0.35정도긴 한데, 0.4로 맞춰보았음.
+            near 0.350000 # Lidar 최소 측정 시작 범위 (Husky 앞과의 거리에 맞춰 조정) 0.35정도긴 한데, 0.4로 맞춰보았음.
           }
         ]
         name "rpLidar_link"
