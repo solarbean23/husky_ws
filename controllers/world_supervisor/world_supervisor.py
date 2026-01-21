@@ -8,12 +8,13 @@ World Supervisor
 
 from controller import Supervisor
 import math
-import random  # [추가] 랜덤 생성을 위해 import
+import random
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from std_srvs.srv import Empty
-from std_msgs.msg import Float32
+from std_msgs.msg import Float64, UInt8  # ✅ UInt8 추가 (Target status용)
+from std_msgs.msg import UInt16MultiArray  # Target을 Summary 형태로 전달하기 위해 추가
 
 
 # -----------------------------
@@ -24,6 +25,7 @@ class ObjectCategory:
     TARGET = "Target"
     WATER = "Water"
     BASE = "Base"
+
 
 # PROTO 템플릿 (spawn 시 사용)
 PROTO_TEMPLATES = {
@@ -42,7 +44,7 @@ DEF {def_name} Pose {{
         }}
       }}
       geometry Sphere {{
-        radius {radius}  # [수정] 고정값 2 -> {radius} 변수로 변경
+        radius {radius}
         subdivision 3
       }}
     }}
@@ -87,10 +89,12 @@ DEF {def_name} Pose {{
 """
 }
 
+
 # -----------------------------
 # util
 # -----------------------------
 def axis_angle_to_quaternion(axis_x, axis_y, axis_z, angle):
+    """axis-angle -> quaternion 변환"""
     norm = math.sqrt(axis_x * axis_x + axis_y * axis_y + axis_z * axis_z)
     if norm < 1e-9:
         return (0.0, 0.0, 0.0, 1.0)
@@ -104,25 +108,25 @@ def axis_angle_to_quaternion(axis_x, axis_y, axis_z, angle):
 # -----------------------------
 class DynamicObjectManager:
     def __init__(self, supervisor: Supervisor, category: str, def_prefix: str):
+        """카테고리별(Webots DEF prefix 기반) 객체 spawn/remove를 관리"""
         self.supervisor = supervisor
         self.category = category
         self.def_prefix = def_prefix
-        
         self.active_objects = {}
         self.next_index = 1
-        
+
     def scan_existing_objects(self):
+        """월드에 이미 존재하는 객체(DEF prefix 매칭)를 스캔"""
         root = self.supervisor.getRoot()
         children_field = root.getField("children")
         children_count = children_field.getCount()
-        
+
         max_found_index = 0
-        
         for i in range(children_count):
             child_node = children_field.getMFNode(i)
             if child_node is None:
                 continue
-            
+
             def_name = child_node.getDef()
             if def_name and def_name.startswith(self.def_prefix):
                 try:
@@ -133,61 +137,56 @@ class DynamicObjectManager:
                 except ValueError:
                     pass
         
-        # [설명] 여기서 max_found_index + 1을 하므로,
-        # Fire_2가 삭제되고 Fire_1, Fire_3만 있어도 max는 3이 되어 next_index는 4가 됩니다.
-        self.next_index = max_found_index + 1
+        self.next_index = max_found_index + 1   # 다음 인덱스 설정 -> 겹치지 않도록 (Fire_1,2,3이 있는 상태에서 2가 없어져도 spawn시 Fire_4로 생성되도록)
         return list(self.active_objects.keys())
-    
-    # [수정] **kwargs 추가: radius 등 추가 파라미터를 받기 위함
+
     def spawn_object(self, position_x: float, position_y: float, position_z: float, **kwargs) -> str:
+        """PROTO 템플릿을 사용해 객체를 동적으로 생성"""
         def_name = f"{self.def_prefix}{self.next_index}"
         self.next_index += 1
-        
+
         template = PROTO_TEMPLATES.get(self.category)
         if template is None:
             return None
-        
-        # [수정] format에 **kwargs 전달
-        # Fire인 경우 kwargs에 'radius'가 포함되어야 함
+
         try:
             proto_string = template.format(
                 def_name=def_name,
                 x=position_x,
                 y=position_y,
                 z=position_z,
-                **kwargs 
+                **kwargs
             )
         except KeyError as e:
-            # 템플릿에 필요한 인자가 안 넘어온 경우 에러 처리 (예: radius 누락)
             print(f"Error formatting template: Missing key {e}")
             return None
-        
+
         root = self.supervisor.getRoot()
         children_field = root.getField("children")
         children_field.importMFNodeFromString(-1, proto_string)
-        
+
         new_node = self.supervisor.getFromDef(def_name)
         if new_node:
             self.active_objects[def_name] = new_node
             return def_name
-        
         return None
-    
+
     def remove_object(self, def_name: str) -> bool:
+        """객체를 월드에서 제거"""
         if def_name not in self.active_objects:
             return False
-        
         webots_node = self.active_objects[def_name]
         if webots_node:
             webots_node.remove()
-        
         del self.active_objects[def_name]
         return True
-    
+
     def get_active_object_names(self):
+        """현재 active 상태인 DEF 리스트 반환"""
         return list(self.active_objects.keys())
-    
+
     def get_webots_node(self, def_name: str):
+        """DEF에 해당하는 Webots node 반환"""
         return self.active_objects.get(def_name)
 
 
@@ -196,148 +195,187 @@ class DynamicObjectManager:
 # -----------------------------
 class WorldSupervisor(Node):
     def __init__(self, supervisor: Supervisor):
+        """WorldSupervisor 초기화 및 publisher/service 구성"""
         super().__init__("world_supervisor")
 
         self.supervisor = supervisor
         self.timestep = int(self.supervisor.getBasicTimeStep())
 
         self.frame_id = "webots_world"
-        self.publish_rate = 20.0
+        self.publish_rate = 30.0  # 20.0
 
-        self.fire_manager = DynamicObjectManager(
-            supervisor, ObjectCategory.FIRE, "Fire_"
-        )
-        self.target_manager = DynamicObjectManager(
-            supervisor, ObjectCategory.TARGET, "Target_"
-        )
-        self.water_manager = DynamicObjectManager(
-            supervisor, ObjectCategory.WATER, "Water_"
-        )
-        
+        self.fire_manager = DynamicObjectManager(supervisor, ObjectCategory.FIRE, "Fire_")
+        self.target_manager = DynamicObjectManager(supervisor, ObjectCategory.TARGET, "Target_")
+        self.water_manager = DynamicObjectManager(supervisor, ObjectCategory.WATER, "Water_")
+
         self.base_node = None
         self.base_def_name = "Base"
-        
+
+        # Target status: 0=UNCHECKED, 1=CHECKED, 2=COMPLETED
+        self.target_status = {}              # { Target_1: 0/1/2 }
+        self.target_status_publishers = {}   # { Target_1: Publisher(UInt8) }
+        self.target_check_services = {}      # { Target_1: Service(/check) }
+        self.target_summary_publishers = self.create_publisher(UInt16MultiArray, "/world/target/summary", 1)  # Target Summary
+
         self._scan_initial_objects()
-        
+
         self.fire_publishers = {}
         self.fire_radius_publishers = {}
         self.target_publishers = {}
         self.water_publishers = {}
         self.base_publisher = None
-        
+
         self._create_initial_publishers()
-        
-        self.remove_services = {}
+
+        self.remove_services = {}  # suppress/complete 같은 “삭제” 서비스들 관리
         self.spawn_services = {}
-        
+
         self._create_spawn_services()
         self._create_initial_remove_services()
-
-        # [옵션] 주기적으로 자동 생성하고 싶다면 Timer 사용
-        # self.create_timer(5.0, self._auto_spawn_fire_timer_callback)
 
         self.last_publish_time = self.get_clock().now()
         self.get_logger().info("WorldSupervisor ready")
 
-    # ... (기존 _scan_initial_objects, _create_initial_publishers 등은 동일) ...
     def _scan_initial_objects(self):
+        """월드 초기 객체(Fire/Target/Water/Base) 스캔"""
         self.fire_manager.scan_existing_objects()
         self.target_manager.scan_existing_objects()
         self.water_manager.scan_existing_objects()
         self.base_node = self.supervisor.getFromDef(self.base_def_name)
 
     def _create_initial_publishers(self):
+        """초기 존재하는 객체들에 대한 publisher 생성"""
         for def_name in self.fire_manager.get_active_object_names():
             self._create_fire_publisher(def_name)
+
         for def_name in self.target_manager.get_active_object_names():
             self._create_target_publisher(def_name)
+            self.target_status.setdefault(def_name, 0)       # ✅ 초기 UNCHECKED
+            self._create_target_status_publisher(def_name)   # ✅ status pub 추가
+
         for def_name in self.water_manager.get_active_object_names():
             self._create_water_publisher(def_name)
+
         if self.base_node:
             self.base_publisher = self.create_publisher(PoseStamped, "/world/base/pose", 1)
 
     def _create_fire_publisher(self, def_name: str):
+        """Fire pose/radius 퍼블리셔 생성"""
         topic_name = f"/world/fire/{def_name}/pose"
         self.fire_publishers[def_name] = self.create_publisher(PoseStamped, topic_name, 1)
-        
+
         radius_topic_name = f"/world/fire/{def_name}/radius"
-        self.fire_radius_publishers[def_name] = self.create_publisher(Float32, radius_topic_name, 1)
+        self.fire_radius_publishers[def_name] = self.create_publisher(Float64, radius_topic_name, 1)
 
     def _create_target_publisher(self, def_name: str):
+        """Target pose 퍼블리셔 생성"""
         topic_name = f"/world/target/{def_name}/pose"
         self.target_publishers[def_name] = self.create_publisher(PoseStamped, topic_name, 1)
 
+    def _create_target_status_publisher(self, def_name: str):
+        """Target status 퍼블리셔 생성"""
+        topic_name = f"/world/target/{def_name}/status"
+        self.target_status_publishers[def_name] = self.create_publisher(UInt8, topic_name, 1)
+
     def _create_water_publisher(self, def_name: str):
+        """Water pose 퍼블리셔 생성"""
         topic_name = f"/world/water/{def_name}/pose"
         self.water_publishers[def_name] = self.create_publisher(PoseStamped, topic_name, 1)
 
-    def _create_spawn_services(self):
+    def _create_spawn_services(self):   # 직접 터미널에서 호출하는 방식으로 구현
+        """spawn 서비스 생성"""
         self.create_service(Empty, "/world/fire/spawn", self._handle_spawn_fire)
         self.create_service(Empty, "/world/target/spawn", self._handle_spawn_target)
 
-    # -----------------------------------------------------
-    # [핵심 로직] Fire 랜덤 생성 핸들러
-    # -----------------------------------------------------
     def _handle_spawn_fire(self, request, response):
-        """
-        서비스 호출 시 랜덤 위치/크기의 Fire 생성
-        - 위치: 15x15 영역 (x, y: -7.5 ~ 7.5)
-        - 크기: radius 0.5 ~ 2.0
-        """
-        # [수정] 랜덤 좌표 생성 (15x15 영역)
-        range_limit = 7.5  # -7.5 ~ 7.5
-        rand_x = random.uniform(-range_limit, range_limit)
-        rand_y = random.uniform(-range_limit, range_limit)
-        rand_z = 0.2  # 지면보다 살짝 위
+        """Fire를 랜덤 위치/크기로 생성"""
+        range_limit = 12.5  # +/-12.5
+        rand_x = round(random.uniform(-range_limit, range_limit), 2)
+        rand_y = round(random.uniform(-range_limit, range_limit), 2)
+        default_z = 0.0
 
-        # [수정] 랜덤 반지름 생성
-        rand_radius = random.uniform(0.5, 2.0)
-        
-        # radius 키워드 인자 전달
-        def_name = self.fire_manager.spawn_object(rand_x, rand_y, rand_z, radius=rand_radius)
-        
+        rand_radius = round(random.uniform(0.5, 3.0), 2)
+
+        def_name = self.fire_manager.spawn_object(rand_x, rand_y, default_z, radius=rand_radius)
+
         if def_name:
             self._create_fire_publisher(def_name)
             self._create_suppress_service_for_fire(def_name)
-            self.get_logger().info(
-                f"Spawned {def_name} at ({rand_x:.2f}, {rand_y:.2f}) with radius {rand_radius:.2f}"
-            )
+            self.get_logger().info(f"Spawned {def_name} at ({rand_x}, {rand_y}) with radius {rand_radius}")
         else:
             self.get_logger().error("Failed to spawn Fire")
-        
+
         return response
 
     def _handle_spawn_target(self, request, response):
-        default_x, default_y, default_z = 2.0, 2.0, 0.01
-        def_name = self.target_manager.spawn_object(default_x, default_y, default_z)
+        """Target을 랜덤 위치에 생성"""
+        range_limit = 10.0
+        rand_x = round(random.uniform(-range_limit, range_limit), 2)
+        rand_y = round(random.uniform(-range_limit, range_limit), 2)
+        default_z = 0.03
+        def_name = self.target_manager.spawn_object(rand_x, rand_y, default_z)
+
         if def_name:
             self._create_target_publisher(def_name)
+
+            # target의 status/pub/service 생성
+            self.target_status[def_name] = 0
+            self._create_target_status_publisher(def_name)
+            self._create_check_service_for_target(def_name)
+
+            # complete 서비스 생성
             self._create_complete_service_for_target(def_name)
+
             self.get_logger().info(f"Spawned {def_name}")
         return response
 
-    # ... (나머지 서비스 관련 코드, suppress 등 기존과 동일) ...
     def _create_initial_remove_services(self):
+        """초기 존재 객체들의 suppress/complete/check 서비스 생성"""
         for def_name in self.fire_manager.get_active_object_names():
             self._create_suppress_service_for_fire(def_name)
+
         for def_name in self.target_manager.get_active_object_names():
             self._create_complete_service_for_target(def_name)
-    
+            self._create_check_service_for_target(def_name)  # ✅ check srv 추가
+
     def _create_suppress_service_for_fire(self, def_name: str):
+        """Fire suppress 서비스 생성"""
         service_name = f"/world/fire/{def_name}/suppress"
         service = self.create_service(Empty, service_name, self._make_fire_suppress_callback(def_name))
         self.remove_services[def_name] = service
-    
+
     def _create_complete_service_for_target(self, def_name: str):
+        """Target complete(삭제) 서비스 생성"""
         service_name = f"/world/target/{def_name}/complete"
         service = self.create_service(Empty, service_name, self._make_target_complete_callback(def_name))
         self.remove_services[def_name] = service
 
+    def _create_check_service_for_target(self, def_name: str):
+        """Target check 서비스 생성 (Mavic가 호출 예정)"""
+        # TODO(ML-BT): Mavic의 CheckTarget 노드에서 이 서비스를 호출하도록 구현
+        service_name = f"/world/target/{def_name}/check"
+        srv = self.create_service(Empty, service_name, self._make_target_check_callback(def_name))
+        self.target_check_services[def_name] = srv
+
+    def _make_target_check_callback(self, def_name: str):
+        """check 서비스 콜 시 UNCHECKED -> CHECKED로 변경"""
+        def callback(request, response):
+            node = self.target_manager.get_webots_node(def_name)
+            if not node:
+                return response  # 이미 삭제된 경우 무시
+
+            prev = self.target_status.get(def_name, 0)
+            if prev == 0:
+                self.target_status[def_name] = 1
+                self.get_logger().info(f"{def_name} checked")
+            return response
+        return callback
+
     def _make_fire_suppress_callback(self, def_name: str):
+        """suppress 서비스 콜 시 Fire 제거 + 리소스 정리"""
         def callback(request, response):
             success = self.fire_manager.remove_object(def_name)
             if success:
-                # 관련 publisher/service 정리
                 if def_name in self.fire_publishers:
                     self.destroy_publisher(self.fire_publishers[def_name])
                     del self.fire_publishers[def_name]
@@ -352,19 +390,43 @@ class WorldSupervisor(Node):
         return callback
 
     def _make_target_complete_callback(self, def_name: str):
+        """complete 서비스 콜 시 Target을 COMPLETED 처리 후 월드에서 삭제"""
         def callback(request, response):
+            # COMPLETED 상태 기록(디버깅용) 후 바로 삭제
+            self.target_status[def_name] = 2
+
             success = self.target_manager.remove_object(def_name)
             if success:
+                # pose pub 정리
                 if def_name in self.target_publishers:
                     self.destroy_publisher(self.target_publishers[def_name])
                     del self.target_publishers[def_name]
+
+                # status pub 정리
+                if def_name in self.target_status_publishers:
+                    self.destroy_publisher(self.target_status_publishers[def_name])
+                    del self.target_status_publishers[def_name]
+
+                # check srv 정리
+                if def_name in self.target_check_services:
+                    self.destroy_service(self.target_check_services[def_name])
+                    del self.target_check_services[def_name]
+
+                # complete srv 정리
                 if def_name in self.remove_services:
                     self.destroy_service(self.remove_services[def_name])
                     del self.remove_services[def_name]
+
+                # status dict 정리
+                if def_name in self.target_status:
+                    del self.target_status[def_name]
+
+                self.get_logger().info(f"{def_name} completed and removed")
             return response
         return callback
 
     def _read_fire_radius(self, webots_node):
+        """Webots Fire node에서 Sphere radius를 읽음"""
         try:
             children = webots_node.getField("children")
             if children.getCount() > 0:
@@ -374,9 +436,10 @@ class WorldSupervisor(Node):
                     return geom.getField("radius").getSFFloat()
         except Exception:
             pass
-        return 2.0 # fallback
+        return 2.0
 
     def _read_pose(self, webots_node):
+        """Webots node의 translation/rotation을 PoseStamped로 변환"""
         trans = webots_node.getField("translation").getSFVec3f()
         rot = webots_node.getField("rotation").getSFRotation()
         quat = axis_angle_to_quaternion(rot[0], rot[1], rot[2], rot[3])
@@ -392,7 +455,30 @@ class WorldSupervisor(Node):
         msg.pose.orientation.w = quat[3]
         return msg
 
+    def _publish_target_summary(self):
+        """모든 Target의 상태를 UInt16MultiArray로 요약하여 퍼블리시"""
+        active_targets = self.target_manager.get_active_object_names()
+        total_targets = len(active_targets)
+        unchecked = 0
+        checked = 0
+        completed = 0
+
+        for t in active_targets:
+            status = int(self.target_status.get(t, 0))
+            if status == 0:
+                unchecked += 1
+            elif status == 1:
+                checked += 1
+            else:   # completed일 때 여기 들어오는 것 방지
+                completed += 1
+        
+        msg = UInt16MultiArray()
+        msg.data = [total_targets, unchecked, checked, completed]
+        self.target_summary_publishers.publish(msg)
+
+
     def publish_if_needed(self):
+        """publish_rate에 맞춰 pose/radius/status를 주기적으로 publish"""
         now = self.get_clock().now()
         if (now - self.last_publish_time).nanoseconds < 1e9 / self.publish_rate:
             return
@@ -404,8 +490,8 @@ class WorldSupervisor(Node):
                 pub.publish(self._read_pose(node))
                 r_pub = self.fire_radius_publishers.get(def_name)
                 if r_pub:
-                    msg = Float32()
-                    msg.data = self._read_fire_radius(node)
+                    msg = Float64()
+                    msg.data = float(self._read_fire_radius(node))
                     r_pub.publish(msg)
 
         for def_name, pub in list(self.target_publishers.items()):
@@ -413,16 +499,25 @@ class WorldSupervisor(Node):
             if node:
                 pub.publish(self._read_pose(node))
 
+                s_pub = self.target_status_publishers.get(def_name)
+                if s_pub:
+                    msg = UInt8()
+                    msg.data = int(self.target_status.get(def_name, 0))
+                    s_pub.publish(msg)
+
         for def_name, pub in list(self.water_publishers.items()):
             node = self.water_manager.get_webots_node(def_name)
             if node:
                 pub.publish(self._read_pose(node))
-        
+
         if self.base_node and self.base_publisher:
             self.base_publisher.publish(self._read_pose(self.base_node))
 
-# ... (main 함수는 동일) ...
+        self._publish_target_summary()
+
+
 def main():
+    """Webots step 루프에서 ROS spin + publish를 수행"""
     supervisor = Supervisor()
     rclpy.init()
     node = WorldSupervisor(supervisor)
@@ -433,6 +528,7 @@ def main():
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()
