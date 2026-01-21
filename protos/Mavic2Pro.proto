@@ -258,7 +258,7 @@ Robot {
                 appearance PBRAppearance {
                   baseColor 0.5 0.5 0.5
                   baseColorMap ImageTexture {
-                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/resource/mavic_fast_helix.png"
+                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/worlds/icons/mavic_fast_helix.png"
                   }
                   metalness 0
                   roughness 0
@@ -448,7 +448,7 @@ Robot {
                 appearance PBRAppearance {
                   baseColor 0.5 0.5 0.5
                   baseColorMap ImageTexture {
-                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/resource/mavic_fast_helix.png"
+                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/worlds/icons/mavic_fast_helix.png"
                   }
                   metalness 0
                   roughness 0
@@ -638,7 +638,7 @@ Robot {
                 appearance PBRAppearance {
                   baseColor 0.5 0.5 0.5
                   baseColorMap ImageTexture {
-                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/resource/mavic_fast_helix.png"
+                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/worlds/icons/mavic_fast_helix.png"
                   }
                   metalness 0
                   roughness 0
@@ -1104,7 +1104,7 @@ Robot {
                 appearance PBRAppearance {
                   baseColor 0.5 0.5 0.5
                   baseColorMap ImageTexture {
-                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/resource/mavic_fast_helix.png"
+                    url "/home/lsbean991/workspace/husky_ws/webots_ros2_husky/worlds/icons/mavic_fast_helix.png"
                   }
                   metalness 0
                   roughness 0

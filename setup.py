@@ -15,11 +15,13 @@ data_files.append(('share/' + package_name, ['package.xml']))
 data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/base.png']))
 data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/rescue_white.png']))
 data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/rescue_red.png']))
+data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/target.png']))
+data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/mavic_fast_helix.png']))
 data_files.append(('share/' + package_name + '/controllers/world_supervisor', ['controllers/world_supervisor/world_supervisor.py']))
 data_files.append(('share/' + package_name + '/controllers/robot_supervisor', ['controllers/robot_supervisor/robot_supervisor.py']))
 data_files.append(('share/' + package_name + '/protos', ['protos/Mavic2Pro.proto']))
 data_files.append(('share/' + package_name + '/controllers/mavic_driver', ['controllers/mavic_driver/mavic_driver.py']))
-data_files.append(('share/' + package_name + '/resource', ['resource/mavic_fast_helix.png']))
+
 
 
 setup(

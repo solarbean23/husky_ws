@@ -364,7 +364,7 @@ DEF Fire_2 Pose {
     }
   ]
 }
-DEF Rescue_Zone_1 Pose {
+DEF Target_1 Pose {
   translation 10 -5 0.03
   rotation 0 0 1 -1.57
   children [
@@ -376,7 +376,7 @@ DEF Rescue_Zone_1 Pose {
         }
         texture ImageTexture {
           url [
-            "icons/rescue_red.png"
+            "icons/target.png"
           ]
         }
         textureTransform TextureTransform {
