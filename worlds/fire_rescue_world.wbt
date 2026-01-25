@@ -16,8 +16,8 @@ EXTERNPROTO "../protos/Mavic2Pro.proto"
 WorldInfo {
 }
 Viewpoint {
-  orientation 0.2816980121694936 0.6264703803368021 -0.7267606844762715 1.1081262104535887
-  position -50.625599307215495 45.62107335402997 58.675870767150364
+  orientation -0.3609555584306141 -0.8075188822335545 0.4665022397312946 4.755103079484263
+  position -21.748543539809607 20.93996272853756 48.773020288568574
 }
 TexturedBackground {
   texture "noon_cloudy_countryside"
@@ -85,7 +85,7 @@ Rock {
 }
 Rock {
   translation -5 12 0
-  rotation 0 0 1 1.5708
+  rotation 0 0 1 -0.785395307179586
   name "rock(1)"
   type "flat"
   scale 4
@@ -271,7 +271,7 @@ Oak {
   translation -16 -20 0
 }
 Oak {
-  translation 1 8 0
+  translation -1.64828 7.25959 0
   rotation 0 0 1 -1.5707953071795862
   name "oak tree(1)"
 }
@@ -301,7 +301,7 @@ Oak {
   name "oak tree(6)"
 }
 DEF Fire_1 Pose {
-  translation -1 1 0
+  translation -2 1 0
   children [
     Shape {
       appearance Appearance {
@@ -334,6 +334,38 @@ DEF Fire_1 Pose {
 }
 DEF Fire_2 Pose {
   translation 6 3 0
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 0.878431 0.105882 0.141176
+          emissiveColor 0.647059 0.113725 0.176471
+          shininess 0.5
+          specularColor 0.878431 0.105882 0.141176
+          transparency 0.7
+        }
+      }
+      geometry Sphere {
+        radius 1.5
+        subdivision 3
+      }
+    }
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 0.878431 0.105882 0.141176
+          emissiveColor 0.752941 0.109804 0.156863
+        }
+      }
+      geometry Sphere {
+        radius 0.1
+        subdivision 3
+      }
+    }
+  ]
+}
+DEF Fire_3 Pose {
+  translation 12 -15 0
   children [
     Shape {
       appearance Appearance {
@@ -435,18 +467,29 @@ Wall {
   size 0.1 45 1.5
 }
 DEF Fire_UGV_1 Fire_UGV {
-  translation -14 20 0.15
+  translation -14 19 0.15
   rotation 0 0 1 -0.785395307179586
   name "Fire_UGV_1"
 }
 DEF Rescue_UGV_1 Rescue_UGV {
-  translation -20 14 0.15
+  translation -19 19 0.15
   rotation 0 0 1 -0.785395307179586
   name "Rescue_UGV_1"
 }
 DEF UAV_1 Mavic2Pro {
-  translation -16.5 16.5 0.12
+  translation -15 18 0.12
   rotation 0 0 -1 0.785396
   name "UAV_1"
   controller "mavic_driver"
+}
+DEF UAV_2 Mavic2Pro {
+  translation -18 15 0.12
+  rotation 0 0 1 -0.785395307179586
+  name "UAV_2"
+  controller "mavic_driver"
+}
+DEF Fire_UGV_2 Fire_UGV {
+  translation -19 14 0
+  rotation 0 0 1 -0.785395307179586
+  name "Fire_UGV_2"
 }
