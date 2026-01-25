@@ -59,7 +59,7 @@ def generate_launch_description():
         }],
     )
 
-    # ROS control spawners
+    # ROS control spawners (모든 로봇이 공유하는 단일 controller_manager 사용)
     ros2_control_params = os.path.join(package_dir, 'resource', 'ros2control.yaml')
     controller_manager_timeout = ['--controller-manager-timeout', '50']
 
@@ -80,10 +80,9 @@ def generate_launch_description():
     robot_description_path = os.path.join(package_dir, 'resource', 'husky.urdf')
 
     # ----------------------------------------
-    # 로봇별 동적 생성: mappings, robot_driver, waiting_nodes
+    # 로봇별 동적 생성: mappings, robot_driver
     # ----------------------------------------
     robot_drivers = []
-    waiting_nodes = []
 
     for i, robot_name in enumerate(robot_names):
         # 각 로봇별 remapping
@@ -104,26 +103,25 @@ def generate_launch_description():
         )
         robot_drivers.append(robot_driver)
 
-        # 마지막 로봇은 waiting_nodes 제외
-        if i < len(robot_names) - 1:
-            waiting_node = WaitForControllerConnection(
-                target_driver=robot_driver,
-                nodes_to_start=ros_control_spawners
-            )
-            waiting_nodes.append(waiting_node)
+    # 마지막 로봇에만 controller spawner 연결 (공유 controller_manager 사용)
+    waiting_node = WaitForControllerConnection(
+        target_driver=robot_drivers[-1],
+        nodes_to_start=ros_control_spawners
+    )
 
-    # LaunchDescription 구성: robot_driver와 waiting_nodes 교차 배치
+    # LaunchDescription 구성
     launch_items = [
         *set_webots_paths,   # ✅ webots 앞에 들어가야 함
         webots,
         robot_state_publisher,
     ]
 
-    # robot_drivers와 waiting_nodes 교차 배치 (마지막 로봇은 waiting_node 없음)
-    for i, robot_driver in enumerate(robot_drivers):
+    # 모든 robot_driver 추가
+    for robot_driver in robot_drivers:
         launch_items.append(robot_driver)
-        if i < len(waiting_nodes):
-            launch_items.append(waiting_nodes[i])
+    
+    # 마지막에 waiting_node 추가 (controller spawner 실행)
+    launch_items.append(waiting_node)
 
     launch_items.append(
         launch.actions.RegisterEventHandler(

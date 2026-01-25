@@ -68,7 +68,7 @@ class RobotSupervisor:
         self.log = self.node.get_logger()
 
         # world_supervisor와 frame 통일
-        self.frame_id_world = "webots_world"
+        self.frame_id_world = "world" # "webots_world"
 
         # 취급한 DEF 정의
         self.def_prefixes = ["Rescue_UGV", "Fire_UGV", "UAV"]

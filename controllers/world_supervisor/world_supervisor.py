@@ -8,6 +8,7 @@ World Supervisor
 
 from controller import Supervisor
 import math
+import os
 import random
 import rclpy
 from rclpy.node import Node
@@ -15,6 +16,8 @@ from geometry_msgs.msg import PoseStamped
 from std_srvs.srv import Empty
 from std_msgs.msg import Float64, UInt8  # ✅ UInt8 추가 (Target status용)
 from std_msgs.msg import UInt16MultiArray  # Target을 Summary 형태로 전달하기 위해 추가
+from std_msgs.msg import Float64MultiArray  # Custom fire spawn용
+from ament_index_python.packages import get_package_share_directory
 
 
 # -----------------------------
@@ -201,7 +204,17 @@ class WorldSupervisor(Node):
         self.supervisor = supervisor
         self.timestep = int(self.supervisor.getBasicTimeStep())
 
-        self.frame_id = "webots_world"
+        # 월드 파일 경로를 기준으로 icons 폴더 경로 저장
+        # Webots ROS2에서는 월드 파일이 /tmp에 복사되므로 패키지 경로 사용
+        try:
+            pkg_share = get_package_share_directory("webots_ros2_husky")
+            self.icons_dir = os.path.join(pkg_share, "worlds", "icons")
+        except Exception:
+            # fallback: 기존 방식
+            world_path = self.supervisor.getWorldPath()
+            self.icons_dir = os.path.join(os.path.dirname(world_path), "icons")
+
+        self.frame_id = "world" #"webots_world"
         self.publish_rate = 30.0  # 20.0
 
         self.fire_manager = DynamicObjectManager(supervisor, ObjectCategory.FIRE, "Fire_")
@@ -215,7 +228,6 @@ class WorldSupervisor(Node):
         self.target_status = {}              # { Target_1: 0/1/2 }
         self.target_status_publishers = {}   # { Target_1: Publisher(UInt8) }
         self.target_check_services = {}      # { Target_1: Service(/check) }
-        self.target_summary_publishers = self.create_publisher(UInt16MultiArray, "/world/target/summary", 1)  # Target Summary
 
         self._scan_initial_objects()
 
@@ -229,6 +241,10 @@ class WorldSupervisor(Node):
 
         self.remove_services = {}  # suppress/complete 같은 “삭제” 서비스들 관리
         self.spawn_services = {}
+
+        self.target_summary_publishers = self.create_publisher(UInt16MultiArray, "/world/target/summary", 1)  # Target Summary
+        self.fire_total_spawned = len(self.fire_manager.get_active_object_names())
+        self.fire_summary_publishers = self.create_publisher(UInt16MultiArray, "/world/fire/summary", 1)  # Fire Summary
 
         self._create_spawn_services()
         self._create_initial_remove_services()
@@ -283,9 +299,11 @@ class WorldSupervisor(Node):
         self.water_publishers[def_name] = self.create_publisher(PoseStamped, topic_name, 1)
 
     def _create_spawn_services(self):   # 직접 터미널에서 호출하는 방식으로 구현
-        """spawn 서비스 생성"""
+        """spawn 서비스 및 topic 구독 생성"""
         self.create_service(Empty, "/world/fire/spawn", self._handle_spawn_fire)
         self.create_service(Empty, "/world/target/spawn", self._handle_spawn_target)
+        # Custom fire spawn: topic 구독 (x, y, radius 순서)
+        self.create_subscription(Float64MultiArray, "/world/fire/spawn_custom", self._handle_spawn_fire_custom, 1)
 
     def _handle_spawn_fire(self, request, response):
         """Fire를 랜덤 위치/크기로 생성"""
@@ -302,10 +320,30 @@ class WorldSupervisor(Node):
             self._create_fire_publisher(def_name)
             self._create_suppress_service_for_fire(def_name)
             self.get_logger().info(f"Spawned {def_name} at ({rand_x}, {rand_y}) with radius {rand_radius}")
+            self.fire_total_spawned += 1
         else:
             self.get_logger().error("Failed to spawn Fire")
 
         return response
+
+    def _handle_spawn_fire_custom(self, msg):
+        """Fire를 지정된 위치/크기로 생성 (topic callback)
+        msg.data = [x, y, radius]
+        """
+        if len(msg.data) < 3:
+            self.get_logger().error("spawn_custom requires [x, y, radius]")
+            return
+
+        x, y, radius = msg.data[0], msg.data[1], msg.data[2]
+        def_name = self.fire_manager.spawn_object(x, y, 0.0, radius=radius)
+
+        if def_name:
+            self._create_fire_publisher(def_name)
+            self._create_suppress_service_for_fire(def_name)
+            self.get_logger().info(f"Spawned {def_name} at ({x}, {y}) with radius {radius}")
+            self.fire_total_spawned += 1
+        else:
+            self.get_logger().error("Failed to spawn Fire")
 
     def _handle_spawn_target(self, request, response):
         """Target을 랜덤 위치에 생성"""
@@ -358,7 +396,7 @@ class WorldSupervisor(Node):
         self.target_check_services[def_name] = srv
 
     def _make_target_check_callback(self, def_name: str):
-        """check 서비스 콜 시 UNCHECKED -> CHECKED로 변경"""
+        """check 서비스 콜 시 UNCHECKED -> CHECKED로 변경 및 텍스처 변경"""
         def callback(request, response):
             node = self.target_manager.get_webots_node(def_name)
             if not node:
@@ -367,26 +405,74 @@ class WorldSupervisor(Node):
             prev = self.target_status.get(def_name, 0)
             if prev == 0:
                 self.target_status[def_name] = 1
-                self.get_logger().info(f"{def_name} checked")
+                
+                # 텍스처를 target_white.png로 변경
+                try:
+                    children = node.getField("children")
+                    if children and children.getCount() > 0:
+                        shape = children.getMFNode(0)
+                        appearance = shape.getField("appearance").getSFNode()
+                        texture = appearance.getField("texture").getSFNode()
+                        url_field = texture.getField("url")
+                        # 절대 경로로 텍스처 지정
+                        white_texture_path = os.path.join(self.icons_dir, "target_white.png")
+                        url_field.setMFString(0, white_texture_path)
+                        self.get_logger().info(f"{def_name} checked (texture changed to white)")
+                except Exception as e:
+                    self.get_logger().warn(f"Failed to change texture for {def_name}: {e}")
+                    self.get_logger().info(f"{def_name} checked")
             return response
         return callback
 
+    # def _make_fire_suppress_callback(self, def_name: str):
+    #     """suppress 서비스 콜 시 Fire 제거 + 리소스 정리"""
+    #     def callback(request, response):
+    #         success = self.fire_manager.remove_object(def_name)
+    #         if success:
+    #             if def_name in self.fire_publishers:
+    #                 self.destroy_publisher(self.fire_publishers[def_name])
+    #                 del self.fire_publishers[def_name]
+    #             if def_name in self.fire_radius_publishers:
+    #                 self.destroy_publisher(self.fire_radius_publishers[def_name])
+    #                 del self.fire_radius_publishers[def_name]
+    #             if def_name in self.remove_services:
+    #                 self.destroy_service(self.remove_services[def_name])
+    #                 del self.remove_services[def_name]
+    #             self.get_logger().info(f"{def_name} suppressed")
+    #         return response
+    #     return callback
+
     def _make_fire_suppress_callback(self, def_name: str):
-        """suppress 서비스 콜 시 Fire 제거 + 리소스 정리"""
+        """suppress 서비스 콜 시 Fire 제거 + 리소스 정리 (서비스 destroy는 지연)"""
         def callback(request, response):
             success = self.fire_manager.remove_object(def_name)
-            if success:
-                if def_name in self.fire_publishers:
-                    self.destroy_publisher(self.fire_publishers[def_name])
-                    del self.fire_publishers[def_name]
-                if def_name in self.fire_radius_publishers:
-                    self.destroy_publisher(self.fire_radius_publishers[def_name])
-                    del self.fire_radius_publishers[def_name]
+            if not success:
+                return response
+
+            # pub 정리(이건 해도 보통 괜찮지만, 안전하게 하려면 이것도 지연 가능)
+            if def_name in self.fire_publishers:
+                self.destroy_publisher(self.fire_publishers[def_name])
+                del self.fire_publishers[def_name]
+            if def_name in self.fire_radius_publishers:
+                self.destroy_publisher(self.fire_radius_publishers[def_name])
+                del self.fire_radius_publishers[def_name]
+
+            self.get_logger().info(f"{def_name} suppressed")
+
+            # ✅ 서비스 destroy는 콜백 끝난 다음에
+            cleanup_timer = None
+
+            def cleanup_services():
+                nonlocal cleanup_timer
                 if def_name in self.remove_services:
                     self.destroy_service(self.remove_services[def_name])
                     del self.remove_services[def_name]
-                self.get_logger().info(f"{def_name} suppressed")
+                if cleanup_timer:
+                    cleanup_timer.cancel()
+
+            cleanup_timer = self.create_timer(0.1, cleanup_services)
             return response
+
         return callback
 
     def _make_target_complete_callback(self, def_name: str):
@@ -407,21 +493,29 @@ class WorldSupervisor(Node):
                     self.destroy_publisher(self.target_status_publishers[def_name])
                     del self.target_status_publishers[def_name]
 
-                # check srv 정리
-                if def_name in self.target_check_services:
-                    self.destroy_service(self.target_check_services[def_name])
-                    del self.target_check_services[def_name]
-
-                # complete srv 정리
-                if def_name in self.remove_services:
-                    self.destroy_service(self.remove_services[def_name])
-                    del self.remove_services[def_name]
-
                 # status dict 정리
                 if def_name in self.target_status:
                     del self.target_status[def_name]
 
                 self.get_logger().info(f"{def_name} completed and removed")
+
+                # 서비스 정리를 타이머로 지연 (콜백 완료 후 정리)
+                cleanup_timer = None
+
+                def cleanup_services():
+                    nonlocal cleanup_timer
+                    if def_name in self.target_check_services:
+                        self.destroy_service(self.target_check_services[def_name])
+                        del self.target_check_services[def_name]
+                    if def_name in self.remove_services:
+                        self.destroy_service(self.remove_services[def_name])
+                        del self.remove_services[def_name]
+                    # 타이머 한 번 실행 후 취소
+                    if cleanup_timer:
+                        cleanup_timer.cancel()
+
+                cleanup_timer = self.create_timer(0.1, cleanup_services)
+
             return response
         return callback
 
@@ -476,6 +570,15 @@ class WorldSupervisor(Node):
         msg.data = [total_targets, unchecked, checked, completed]
         self.target_summary_publishers.publish(msg)
 
+    def _publish_fire_summary(self):
+        """모든 Fire의 상태를 UInt16MultiArray로 요약하여 퍼블리시"""
+        active_fires = len(self.fire_manager.get_active_object_names())
+        total_fires = int(self.fire_total_spawned)
+        suppressed = max(0, total_fires - active_fires)
+
+        msg = UInt16MultiArray()
+        msg.data = [total_fires, int(active_fires), int(suppressed)]
+        self.fire_summary_publishers.publish(msg)
 
     def publish_if_needed(self):
         """publish_rate에 맞춰 pose/radius/status를 주기적으로 publish"""
@@ -514,6 +617,7 @@ class WorldSupervisor(Node):
             self.base_publisher.publish(self._read_pose(self.base_node))
 
         self._publish_target_summary()
+        self._publish_fire_summary()
 
 
 def main():

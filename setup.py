@@ -16,6 +16,7 @@ data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/bas
 data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/rescue_white.png']))
 data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/rescue_red.png']))
 data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/target.png']))
+data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/target_white.png']))
 data_files.append(('share/' + package_name + '/worlds/icons', ['worlds/icons/mavic_fast_helix.png']))
 data_files.append(('share/' + package_name + '/controllers/world_supervisor', ['controllers/world_supervisor/world_supervisor.py']))
 data_files.append(('share/' + package_name + '/controllers/robot_supervisor', ['controllers/robot_supervisor/robot_supervisor.py']))
