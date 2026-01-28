@@ -66,28 +66,12 @@ DEF {def_name} Pose {{
   ]
 }}
 """,
-  ObjectCategory.TARGET: """
-DEF {def_name} Pose {{
+    ObjectCategory.TARGET: """
+DEF {def_name} Target {{
   translation {x} {y} {z}
   rotation 0 0 1 -1.57
-  children [
-    Shape {{
-      appearance Appearance {{
-        material Material {{
-          diffuseColor 1 1 1
-          emissiveColor 1 1 1
-        }}
-        texture ImageTexture {{
-          url [ "icons/target.png" ]
-        }}
-        textureTransform TextureTransform {{
-        }}
-      }}
-      geometry Plane {{
-        size 1.5 1.5
-      }}
-    }}
-  ]
+  status {status}
+  textureUrl [ "{texture_url}" ]
 }}
 """
 }
@@ -118,6 +102,7 @@ class DynamicObjectManager:
         self.active_objects = {}
         self.next_index = 1
 
+    # 월드에 이미 존재하는 객체를 찾아서 목록에 등록 (초기화 시 실행)
     def scan_existing_objects(self):
         """월드에 이미 존재하는 객체(DEF prefix 매칭)를 스캔"""
         root = self.supervisor.getRoot()
@@ -143,6 +128,17 @@ class DynamicObjectManager:
         self.next_index = max_found_index + 1   # 다음 인덱스 설정 -> 겹치지 않도록 (Fire_1,2,3이 있는 상태에서 2가 없어져도 spawn시 Fire_4로 생성되도록)
         return list(self.active_objects.keys())
 
+    # 특정 객체의 PROTO 필드(status) 값을 읽어옴 (Target의 초기 상태 확인용)
+    def get_object_status(self, def_name: str) -> int:
+        """PROTO field 'status'를 읽어 반환 (field가 없으면 0)"""
+        node = self.active_objects.get(def_name)
+        if node:
+            field = node.getField("status")
+            if field:
+                return field.getSFInt32()
+        return 0
+
+    # 새로운 객체를 월드에 생성 (PROTO 템플릿 사용)
     def spawn_object(self, position_x: float, position_y: float, position_z: float, **kwargs) -> str:
         """PROTO 템플릿을 사용해 객체를 동적으로 생성"""
         def_name = f"{self.def_prefix}{self.next_index}"
@@ -252,6 +248,7 @@ class WorldSupervisor(Node):
         self.last_publish_time = self.get_clock().now()
         self.get_logger().info("WorldSupervisor ready")
 
+    # 프로그램 시작 시 월드에 미리 배치된 객체들을 인식
     def _scan_initial_objects(self):
         """월드 초기 객체(Fire/Target/Water/Base) 스캔"""
         self.fire_manager.scan_existing_objects()
@@ -259,6 +256,7 @@ class WorldSupervisor(Node):
         self.water_manager.scan_existing_objects()
         self.base_node = self.supervisor.getFromDef(self.base_def_name)
 
+    # 인식된 초기 객체들에 대해 Publisher 및 상태 초기화 수행
     def _create_initial_publishers(self):
         """초기 존재하는 객체들에 대한 publisher 생성"""
         for def_name in self.fire_manager.get_active_object_names():
@@ -266,7 +264,14 @@ class WorldSupervisor(Node):
 
         for def_name in self.target_manager.get_active_object_names():
             self._create_target_publisher(def_name)
-            self.target_status.setdefault(def_name, 0)       # ✅ 초기 UNCHECKED
+            
+            # PROTO field에서 초기 상태 읽어오기
+            initial_status = self.target_manager.get_object_status(def_name)
+            self.target_status[def_name] = initial_status
+            
+            # 초기 상태에 맞춰 텍스처 설정 (1=Checked=White, 0=Unchecked=Red)
+            self._set_target_texture(def_name, initial_status == 1)
+            
             self._create_target_status_publisher(def_name)   # ✅ status pub 추가
 
         for def_name in self.water_manager.get_active_object_names():
@@ -351,7 +356,10 @@ class WorldSupervisor(Node):
         rand_x = round(random.uniform(-range_limit, range_limit), 2)
         rand_y = round(random.uniform(-range_limit, range_limit), 2)
         default_z = 0.03
-        def_name = self.target_manager.spawn_object(rand_x, rand_y, default_z)
+        
+        # Spawn new target (Always Unchecked=0, Red)
+        icon_path = os.path.join(self.icons_dir, "target_unchecked.png") # Red
+        def_name = self.target_manager.spawn_object(rand_x, rand_y, default_z, status=0, texture_url=icon_path)
 
         if def_name:
             self._create_target_publisher(def_name)
@@ -395,6 +403,7 @@ class WorldSupervisor(Node):
         srv = self.create_service(Empty, service_name, self._make_target_check_callback(def_name))
         self.target_check_services[def_name] = srv
 
+    # Target Check 서비스(UAV가 호출) 처리용 콜백 함수 생성
     def _make_target_check_callback(self, def_name: str):
         """check 서비스 콜 시 UNCHECKED -> CHECKED로 변경 및 텍스처 변경"""
         def callback(request, response):
@@ -405,42 +414,43 @@ class WorldSupervisor(Node):
             prev = self.target_status.get(def_name, 0)
             if prev == 0:
                 self.target_status[def_name] = 1
-                
-                # 텍스처를 target_white.png로 변경
-                try:
-                    children = node.getField("children")
-                    if children and children.getCount() > 0:
-                        shape = children.getMFNode(0)
-                        appearance = shape.getField("appearance").getSFNode()
-                        texture = appearance.getField("texture").getSFNode()
-                        url_field = texture.getField("url")
-                        # 절대 경로로 텍스처 지정
-                        white_texture_path = os.path.join(self.icons_dir, "target_white.png")
-                        url_field.setMFString(0, white_texture_path)
-                        self.get_logger().info(f"{def_name} checked (texture changed to white)")
-                except Exception as e:
-                    self.get_logger().warn(f"Failed to change texture for {def_name}: {e}")
-                    self.get_logger().info(f"{def_name} checked")
+                self._set_target_texture(def_name, True)
+                self.get_logger().info(f"{def_name} checked")
             return response
         return callback
 
-    # def _make_fire_suppress_callback(self, def_name: str):
-    #     """suppress 서비스 콜 시 Fire 제거 + 리소스 정리"""
-    #     def callback(request, response):
-    #         success = self.fire_manager.remove_object(def_name)
-    #         if success:
-    #             if def_name in self.fire_publishers:
-    #                 self.destroy_publisher(self.fire_publishers[def_name])
-    #                 del self.fire_publishers[def_name]
-    #             if def_name in self.fire_radius_publishers:
-    #                 self.destroy_publisher(self.fire_radius_publishers[def_name])
-    #                 del self.fire_radius_publishers[def_name]
-    #             if def_name in self.remove_services:
-    #                 self.destroy_service(self.remove_services[def_name])
-    #                 del self.remove_services[def_name]
-    #             self.get_logger().info(f"{def_name} suppressed")
-    #         return response
-    #     return callback
+    def _set_target_texture(self, def_name: str, is_checked: bool):
+        """Target의 텍스처를 상태에 따라 변경 (Red/White)"""
+        node = self.target_manager.get_webots_node(def_name)
+        if not node:
+            return
+
+        texture_name = "target_checked.png" if is_checked else "target_unchecked.png"
+        
+        # PROTO field 'textureUrl' 변경 시도 (우선)
+        updated = False
+        try:
+            texture_field = node.getField("textureUrl")
+            if texture_field:
+                path = os.path.join(self.icons_dir, texture_name)
+                texture_field.setMFString(0, path)
+                updated = True
+        except Exception:
+            pass
+        
+        # Fallback: 기존 children...texture 방식
+        if not updated:
+            try:
+                children = node.getField("children")
+                if children and children.getCount() > 0:
+                    shape = children.getMFNode(0)
+                    appearance = shape.getField("appearance").getSFNode()
+                    texture = appearance.getField("texture").getSFNode()
+                    url_field = texture.getField("url")
+                    path = os.path.join(self.icons_dir, texture_name)
+                    url_field.setMFString(0, path)
+            except Exception as e:
+                self.get_logger().warn(f"Failed to set texture for {def_name}: {e}")
 
     def _make_fire_suppress_callback(self, def_name: str):
         """suppress 서비스 콜 시 Fire 제거 + 리소스 정리 (서비스 destroy는 지연)"""
@@ -449,7 +459,7 @@ class WorldSupervisor(Node):
             if not success:
                 return response
 
-            # pub 정리(이건 해도 보통 괜찮지만, 안전하게 하려면 이것도 지연 가능)
+            # pub 정리
             if def_name in self.fire_publishers:
                 self.destroy_publisher(self.fire_publishers[def_name])
                 del self.fire_publishers[def_name]
@@ -459,7 +469,6 @@ class WorldSupervisor(Node):
 
             self.get_logger().info(f"{def_name} suppressed")
 
-            # ✅ 서비스 destroy는 콜백 끝난 다음에
             cleanup_timer = None
 
             def cleanup_services():
@@ -472,7 +481,6 @@ class WorldSupervisor(Node):
 
             cleanup_timer = self.create_timer(0.1, cleanup_services)
             return response
-
         return callback
 
     def _make_target_complete_callback(self, def_name: str):

@@ -12,12 +12,13 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "../protos/Fire_UGV.proto"
 EXTERNPROTO "../protos/Rescue_UGV.proto"
 EXTERNPROTO "../protos/Mavic2Pro.proto"
+IMPORTABLE EXTERNPROTO "../protos/Target.proto"
 
 WorldInfo {
 }
 Viewpoint {
-  orientation -0.3609555584306141 -0.8075188822335545 0.4665022397312946 4.755103079484263
-  position -21.748543539809607 20.93996272853756 48.773020288568574
+  orientation 0.08109367988418731 0.9658948455480406 -0.24590844317869165 0.6579788642460395
+  position -57.82884893748927 -2.191745125787108 33.64450206949627
 }
 TexturedBackground {
   texture "noon_cloudy_countryside"
@@ -396,29 +397,18 @@ DEF Fire_3 Pose {
     }
   ]
 }
-DEF Target_1 Pose {
+DEF Target_1 Target {
   translation 10 -5 0.03
-  rotation 0 0 1 -1.57
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 1 1 1
-          emissiveColor 1 1 1
-        }
-        texture ImageTexture {
-          url [
-            "icons/target.png"
-          ]
-        }
-        textureTransform TextureTransform {
-        }
-      }
-      geometry Plane {
-        size 1.5 1.5
-      }
-    }
+  status 1
+  textureUrl [
+    "icons/target_checked.png"
   ]
+}
+DEF Target_2 Target {
+  translation 7.5 11 0.03
+}
+DEF Target_3 Target {
+  translation -13 -10 0.03
 }
 DEF Base Pose {
   translation -18 18 0.01
@@ -481,12 +471,18 @@ DEF UAV_1 Mavic2Pro {
   rotation 0 0 -1 0.785396
   name "UAV_1"
   controller "mavic_driver"
+  controllerArgs [
+    "5.0"
+  ]
 }
 DEF UAV_2 Mavic2Pro {
   translation -18 15 0.12
   rotation 0 0 1 -0.785395307179586
   name "UAV_2"
   controller "mavic_driver"
+  controllerArgs [
+    "4.5"
+  ]
 }
 DEF Fire_UGV_2 Fire_UGV {
   translation -19 14 0
