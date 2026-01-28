@@ -15,6 +15,7 @@
 """ROS2 Mavic 2 Pro driver."""
 
 import math
+import sys
 import rclpy
 from controller import Robot
 from geometry_msgs.msg import Twist
@@ -199,8 +200,20 @@ def main():
     node.create_subscription(Twist, f'/{robot_name}/cmd_vel', cmd_vel_callback, 1)
     
     print(f"=====Mavic driver started for {robot_name}=====")
+
+    # WBT 파일의 controllerArgs로부터 목표 고도 설정
+    target_lift_height = LIFT_HEIGHT
+    if len(sys.argv) > 1:
+        try:
+            target_lift_height = float(sys.argv[1])
+            print(f"Set target lift height to {target_lift_height}m from controllerArgs")
+        except ValueError:
+            print(f"Invalid lift height argument: {sys.argv[1]}, using default {LIFT_HEIGHT}m")
+    else:
+        print(f"No controllerArgs provided, using default lift height {LIFT_HEIGHT}m")
     
     # 메인 루프
+
     while robot.step(timestep) != -1:
         rclpy.spin_once(node, timeout_sec=0)
         
@@ -233,11 +246,10 @@ def main():
         velocity_x = vx_global * cos_yaw + vy_global * sin_yaw
         velocity_y = -vx_global * sin_yaw + vy_global * cos_yaw
         
-        # High level control (일단 리프트만)
         if vertical > 0.2:
             # 점진적 상승: 목표 고도까지 서서히 올림
-            if vertical_ref < LIFT_HEIGHT:
-                vertical_ref = min(vertical_ref + ASCENT_RATE * dt, LIFT_HEIGHT)
+            if vertical_ref < target_lift_height:
+                vertical_ref = min(vertical_ref + ASCENT_RATE * dt, target_lift_height)
             
             linear_y_error = target_twist.linear.y - velocity_y
             linear_x_error = target_twist.linear.x - velocity_x
@@ -247,7 +259,7 @@ def main():
             pitch_ref = - K_X_VELOCITY_P * linear_x_error - K_X_VELOCITY_I * linear_x_integral
             vertical_ref = clamp(
                 vertical_ref + target_twist.linear.z * dt,
-                max(vertical - 0.5, LIFT_HEIGHT),
+                max(vertical - 0.5, target_lift_height),
                 vertical + 0.5
             )
         else:
