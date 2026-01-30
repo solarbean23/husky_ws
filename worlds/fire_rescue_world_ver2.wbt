@@ -8,7 +8,6 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/SandyGround.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Grass.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/trees/protos/Oak.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/Wall.proto"
 EXTERNPROTO "../protos/Fire_UGV.proto"
 EXTERNPROTO "../protos/Rescue_UGV.proto"
 EXTERNPROTO "../protos/Mavic2Pro.proto"
@@ -17,8 +16,8 @@ IMPORTABLE EXTERNPROTO "../protos/Target.proto"
 WorldInfo {
 }
 Viewpoint {
-  orientation 0.37777659812505615 0.6392403679030239 -0.6698183290656253 1.4458859837442917
-  position -32.58494544150421 28.800799060701856 72.93904236263063
+  orientation 0.5102618184442151 0.4968065118630051 -0.7020086654796484 1.942458792988342
+  position 4.3059588015584636 11.236745855979823 90.21652422498993
 }
 TexturedBackground {
   texture "noon_cloudy_countryside"
@@ -29,7 +28,7 @@ TexturedBackgroundLight {
 SolidBox {
   translation 0 0 -2
   name "box(2)"
-  size 45.25 45.25 3
+  size 120.25 120.25 3
   appearance SandyGround {
     textureTransform TextureTransform {
       scale 30 15
@@ -48,7 +47,7 @@ DEF Robot_Supervisor Robot {
 }
 SolidBox {
   translation 0 0 -1.5
-  size 45 45 3
+  size 120 120 3
   appearance Grass {
     type "mossy"
     textureTransform TextureTransform {
@@ -78,6 +77,14 @@ Cypress {
 Cypress {
   translation 9 -17 -0.1
   name "cypress tree(5)"
+}
+Cypress {
+  translation 19 28 -0.1
+  name "cypress tree(6)"
+}
+Cypress {
+  translation -29 20 -0.1
+  name "cypress tree(7)"
 }
 Rock {
   translation -15 -2 0
@@ -132,8 +139,71 @@ Rock {
   type "flat"
   scale 6
 }
+Rock {
+  translation -30.3328 -22.676 2.41585e-13
+  rotation 0 0 1 -2.3561953071795863
+  name "rock(8)"
+  type "flat"
+  scale 6
+}
+Rock {
+  translation -34.5 3 0
+  rotation 0 0 1 2.35619
+  name "rock(9)"
+  type "flat"
+  scale 4
+}
+Rock {
+  translation 1 35 1.42109e-14
+  rotation 0 0 -1 0.785399
+  name "rock(10)"
+  type "flat"
+  scale 5
+}
+Rock {
+  translation 32 29 0
+  rotation 0 0 1 -1.5707953071795862
+  name "rock(11)"
+  type "flat"
+  scale 7
+}
+Rock {
+  translation -13 -30 4.26326e-14
+  rotation 0 0 -1 0.785399
+  name "rock(14)"
+  type "flat"
+  scale 4
+}
+Rock {
+  translation 27 -32 -7.10543e-14
+  rotation 0 0 -1 0.785399
+  name "rock(15)"
+  type "flat"
+  scale 4
+}
+Rock {
+  translation -24 32 -1.91847e-13
+  rotation 0 0 1 0.261799
+  name "rock(16)"
+  type "flat"
+  scale 6
+}
+Rock {
+  translation 6 -36 -1.42109e-14
+  rotation 0 0 1 -1.3089953071795861
+  name "rock(13)"
+  type "flat"
+  scale 6
+}
+Rock {
+  translation 30 0 0
+  rotation 0 0 1 -2.6179953071795863
+  name "rock(12)"
+  type "flat"
+  scale 8
+}
 DEF TRIANGLE_POLYGON Transform {
-  translation -16 16 0.03
+  translation -16 16 0.005
   rotation 0 0 1 -1.5707953071795862
   scale 20 20 1
   children [
@@ -301,6 +371,21 @@ Oak {
   rotation 0 0 1 -1.5707953071795862
   name "oak tree(6)"
 }
+Oak {
+  translation -10 30 0
+  rotation 0 0 1 -1.5707953071795862
+  name "oak tree(7)"
+}
+Oak {
+  translation 33 -17 1.10134e-13
+  rotation 0 0 1 -1.5707953071795862
+  name "oak tree(8)"
+}
+Oak {
+  translation -4 -28 0
+  rotation 0 0 1 -1.5707953071795862
+  name "oak tree(9)"
+}
 DEF Fire_1 Pose {
   translation -2 1 0
   children [
@@ -437,13 +522,13 @@ DEF Target_1 Target {
   ]
 }
 DEF Target_2 Target {
-  translation 13 -5 0.03
+  translation 3 -4 0.03
 }
 DEF Target_3 Target {
-  translation -11 -10 0.03
+  translation 4 -18 0.03
 }
 DEF Base Pose {
-  translation -18 18 0.01
+  translation -18 18 0
   rotation 0 0 1 -2.3561953071795863
   children [
     Shape {
@@ -466,27 +551,6 @@ DEF Base Pose {
       }
     }
   ]
-}
-Wall {
-  translation 0 22.55 -0.5
-  rotation 0 0 1 1.5708
-  size 0.1 45 1.5
-}
-Wall {
-  translation 0 -22.55 -0.5
-  rotation 0 0 1 1.5708
-  name "wall(1)"
-  size 0.1 45 1.5
-}
-Wall {
-  translation 22.55 0 -0.5
-  name "wall(2)"
-  size 0.1 45 1.5
-}
-Wall {
-  translation -22.55 0 -0.5
-  name "wall(3)"
-  size 0.1 45 1.5
 }
 DEF Fire_UGV_1 Fire_UGV {
   translation -14 19 0.15

@@ -9,6 +9,7 @@ data_files.append(('share/' + package_name + '/protos', ['protos/Rescue_UGV.prot
 data_files.append(('share/' + package_name + '/protos', ['protos/Target.proto']))
 data_files.append(('share/' + package_name + '/worlds', ['worlds/husky_world.wbt']))
 data_files.append(('share/' + package_name + '/worlds', ['worlds/fire_rescue_world.wbt']))
+data_files.append(('share/' + package_name + '/worlds', ['worlds/fire_rescue_world_ver2.wbt']))
 data_files.append(('share/' + package_name + '/resource', ['resource/ros2control.yaml']))
 data_files.append(('share/' + package_name + '/resource', ['resource/husky.urdf']))
 data_files.append(('share/' + package_name + '/launch', ['launch/robot_launch.py']))

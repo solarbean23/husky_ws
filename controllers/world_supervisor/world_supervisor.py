@@ -307,8 +307,10 @@ class WorldSupervisor(Node):
         """spawn 서비스 및 topic 구독 생성"""
         self.create_service(Empty, "/world/fire/spawn", self._handle_spawn_fire)
         self.create_service(Empty, "/world/target/spawn", self._handle_spawn_target)
-        # Custom fire spawn: topic 구독 (x, y, radius 순서)
+        # Fire 지정 생성 / x, y, radius
         self.create_subscription(Float64MultiArray, "/world/fire/spawn_custom", self._handle_spawn_fire_custom, 1)
+        # Target 지정 생성 / x, y
+        self.create_subscription(Float64MultiArray, "/world/target/spawn_custom", self._handle_spawn_target_custom, 1)
 
     def _handle_spawn_fire(self, request, response):
         """Fire를 랜덤 위치/크기로 생성"""
@@ -332,9 +334,7 @@ class WorldSupervisor(Node):
         return response
 
     def _handle_spawn_fire_custom(self, msg):
-        """Fire를 지정된 위치/크기로 생성 (topic callback)
-        msg.data = [x, y, radius]
-        """
+        """Fire를 지정된 위치/크기로 생성 / msg.data = [x, y, radius]"""
         if len(msg.data) < 3:
             self.get_logger().error("spawn_custom requires [x, y, radius]")
             return
@@ -374,6 +374,32 @@ class WorldSupervisor(Node):
 
             self.get_logger().info(f"Spawned {def_name}")
         return response
+
+    def _handle_spawn_target_custom(self, msg):
+        """Target을 지정된 위치에 생성 / msg.data = [x, y]"""
+        if len(msg.data) < 2:
+            self.get_logger().error("spawn_custom requires [x, y]")
+            return
+
+        x, y = msg.data[0], msg.data[1]
+        default_z = 0.03
+
+        # Spawn new target (Always Unchecked=0, Red)
+        icon_path = os.path.join(self.icons_dir, "target_unchecked.png") # Red
+        def_name = self.target_manager.spawn_object(x, y, default_z, status=0, texture_url=icon_path)
+
+        if def_name:
+            self._create_target_publisher(def_name)
+
+            # target의 status/pub/service 생성
+            self.target_status[def_name] = 0
+            self._create_target_status_publisher(def_name)
+            self._create_check_service_for_target(def_name)
+
+            # complete 서비스 생성
+            self._create_complete_service_for_target(def_name)
+
+            self.get_logger().info(f"Spawned {def_name} at ({x}, {y})")
 
     def _create_initial_remove_services(self):
         """초기 존재 객체들의 suppress/complete/check 서비스 생성"""

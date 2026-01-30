@@ -42,7 +42,7 @@ def generate_launch_description():
     ]
 
     # Start a Webots simulation instance
-    world_path = os.path.join(package_dir, 'worlds', 'fire_rescue_world.wbt')
+    world_path = os.path.join(package_dir, 'worlds', 'fire_rescue_world_ver2.wbt')
     webots = WebotsLauncher(world=world_path)
 
     # 월드 파일에서 로봇 이름 동적 발견
