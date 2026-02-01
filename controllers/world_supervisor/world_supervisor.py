@@ -33,37 +33,9 @@ class ObjectCategory:
 # PROTO 템플릿 (spawn 시 사용)
 PROTO_TEMPLATES = {
   ObjectCategory.FIRE: """
-DEF {def_name} Pose {{
+DEF {def_name} Fire {{
   translation {x} {y} {z}
-  children [
-    Shape {{
-      appearance Appearance {{
-        material Material {{
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.647059 0.113725 0.176471
-          shininess 0.5
-          specularColor 0.878431 0.105882 0.141176
-          transparency 0.7
-        }}
-      }}
-      geometry Sphere {{
-        radius {radius}
-        subdivision 3
-      }}
-    }}
-    Shape {{
-      appearance Appearance {{
-        material Material {{
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.752941 0.109804 0.156863
-        }}
-      }}
-      geometry Sphere {{
-        radius 0.1
-        subdivision 3
-      }}
-    }}
-  ]
+  radius {radius}
 }}
 """,
     ObjectCategory.TARGET: """
@@ -554,14 +526,11 @@ class WorldSupervisor(Node):
         return callback
 
     def _read_fire_radius(self, webots_node):
-        """Webots Fire node에서 Sphere radius를 읽음"""
+        """Webots Fire PROTO node에서 radius 필드를 읽음"""
         try:
-            children = webots_node.getField("children")
-            if children.getCount() > 0:
-                shape = children.getMFNode(0)
-                geom = shape.getField("geometry").getSFNode()
-                if geom.getTypeName() == "Sphere":
-                    return geom.getField("radius").getSFFloat()
+            radius_field = webots_node.getField("radius")
+            if radius_field:
+                return radius_field.getSFFloat()
         except Exception:
             pass
         return 2.0

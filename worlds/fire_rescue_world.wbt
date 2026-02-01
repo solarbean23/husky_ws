@@ -12,6 +12,7 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "../protos/Fire_UGV.proto"
 EXTERNPROTO "../protos/Rescue_UGV.proto"
 EXTERNPROTO "../protos/Mavic2Pro.proto"
+IMPORTABLE EXTERNPROTO "../protos/Fire.proto"
 IMPORTABLE EXTERNPROTO "../protos/Target.proto"
 
 WorldInfo {
@@ -301,133 +302,21 @@ Oak {
   rotation 0 0 1 -1.5707953071795862
   name "oak tree(6)"
 }
-DEF Fire_1 Pose {
+DEF Fire_1 Fire {
   translation -2 1 0
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.647059 0.113725 0.176471
-          shininess 0.5
-          specularColor 0.878431 0.105882 0.141176
-          transparency 0.7
-        }
-      }
-      geometry Sphere {
-        radius 2
-        subdivision 3
-      }
-    }
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.752941 0.109804 0.156863
-        }
-      }
-      geometry Sphere {
-        radius 0.1
-        subdivision 3
-      }
-    }
-  ]
+  radius 2
 }
-DEF Fire_2 Pose {
+DEF Fire_2 Fire {
   translation 6 3 0
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.647059 0.113725 0.176471
-          shininess 0.5
-          specularColor 0.878431 0.105882 0.141176
-          transparency 0.7
-        }
-      }
-      geometry Sphere {
-        radius 1.5
-        subdivision 3
-      }
-    }
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.752941 0.109804 0.156863
-        }
-      }
-      geometry Sphere {
-        radius 0.1
-        subdivision 3
-      }
-    }
-  ]
+  radius 1.5
 }
-DEF Fire_3 Pose {
+DEF Fire_3 Fire {
   translation 12 -15 0
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.647059 0.113725 0.176471
-          shininess 0.5
-          specularColor 0.878431 0.105882 0.141176
-          transparency 0.7
-        }
-      }
-      geometry Sphere {
-        radius 1.5
-        subdivision 3
-      }
-    }
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.752941 0.109804 0.156863
-        }
-      }
-      geometry Sphere {
-        radius 0.1
-        subdivision 3
-      }
-    }
-  ]
+  radius 1.5
 }
-DEF Fire_4 Pose {
+DEF Fire_4 Fire {
   translation 2.5 15.5 0
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.647059 0.113725 0.176471
-          shininess 0.5
-          specularColor 0.878431 0.105882 0.141176
-          transparency 0.7
-        }
-      }
-      geometry Sphere {
-        radius 2.5
-        subdivision 3
-      }
-    }
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 0.878431 0.105882 0.141176
-          emissiveColor 0.752941 0.109804 0.156863
-        }
-      }
-      geometry Sphere {
-        radius 0.1
-        subdivision 3
-      }
-    }
-  ]
+  radius 2.5
 }
 DEF Target_1 Target {
   translation 6 12 0.03
