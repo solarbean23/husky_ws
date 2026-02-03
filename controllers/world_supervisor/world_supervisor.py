@@ -214,8 +214,30 @@ class WorldSupervisor(Node):
         self.fire_total_spawned = len(self.fire_manager.get_active_object_names())
         self.fire_summary_publishers = self.create_publisher(UInt16MultiArray, "/world/fire/summary", 1)  # Fire Summary
 
+        # ===== Fire 자동 스폰 및 확산 설정 =====
+        self.fire_auto_spawn_enabled = False      # 자동 스폰 활성화 여부
+        self.fire_auto_spawn_interval = 20.0     # 자동 스폰 간격 (초)
+        self.fire_spawn_range = 20.0             # 스폰 가능 범위 (+/-)
+        self.fire_max_count = 20                 # 최대 Fire 개수 제한
+
+        self.fire_spread_enabled = True          # 확산 활성화 여부
+        self.fire_spread_interval = 5.0         # 확산 시도 간격 (초)
+        self.fire_spread_probability = 0.8       # 확산 확률 (0.0 ~ 1.0)
+        self.fire_spread_distance_min = 2.0      # 확산 최소 거리
+        self.fire_spread_distance_max = 5.0      # 확산 최대 거리
+
         self._create_spawn_services()
         self._create_initial_remove_services()
+
+        # Fire 자동 스폰 타이머
+        if self.fire_auto_spawn_enabled:
+            self.fire_auto_spawn_timer = self.create_timer(self.fire_auto_spawn_interval, self._auto_spawn_fire)
+            self.get_logger().info(f"Fire auto spawn enabled: every {self.fire_auto_spawn_interval}s")
+
+        # Fire 확산 타이머
+        if self.fire_spread_enabled:
+            self.fire_spread_timer = self.create_timer(self.fire_spread_interval, self._spread_fire_from_existing)
+            self.get_logger().info(f"Fire spread enabled: every {self.fire_spread_interval}s, prob={self.fire_spread_probability}")
 
         self.last_publish_time = self.get_clock().now()
         self.get_logger().info("WorldSupervisor ready")
@@ -381,6 +403,81 @@ class WorldSupervisor(Node):
         for def_name in self.target_manager.get_active_object_names():
             self._create_complete_service_for_target(def_name)
             self._create_check_service_for_target(def_name)  # ✅ check srv 추가
+
+    # ===== Fire 자동 스폰 =====
+    def _auto_spawn_fire(self):
+        """랜덤 위치에 Fire 자동 생성"""
+        current_count = len(self.fire_manager.get_active_object_names())
+        if current_count >= self.fire_max_count:  # 최대 개수 제한
+            self.get_logger().info(f"Fire count ({current_count}) reached max ({self.fire_max_count}), skipping auto spawn")
+            return
+
+        rand_x = round(random.uniform(-self.fire_spawn_range, self.fire_spawn_range), 2)
+        rand_y = round(random.uniform(-self.fire_spawn_range, self.fire_spawn_range), 2)
+        rand_radius = round(random.uniform(0.5, 2.5), 2)
+
+        def_name = self.fire_manager.spawn_object(rand_x, rand_y, 0.0, radius=rand_radius)
+        if def_name:
+            self._create_fire_publisher(def_name)
+            self._create_suppress_service_for_fire(def_name)
+            self.fire_total_spawned += 1
+            self.get_logger().info(f"[Auto] Spawned {def_name} at ({rand_x}, {rand_y}) radius={rand_radius}")
+
+    # ===== Fire 확산 =====
+    def _spread_fire_from_existing(self):
+        """기존 Fire 주변으로 확산"""
+        current_count = len(self.fire_manager.get_active_object_names())
+        if current_count >= self.fire_max_count:
+            self.get_logger().debug(f"Fire count ({current_count}) reached max, skipping spread")
+            return
+
+        active_fires = list(self.fire_manager.active_objects.keys())
+        if not active_fires:
+            return
+
+        # 랜덤하게 하나의 Fire 선택하여 확산 시도
+        source_fire = random.choice(active_fires)
+        if random.random() > self.fire_spread_probability:
+            self.get_logger().debug(f"Spread skipped (prob check failed) for {source_fire}")
+            return
+
+        node = self.fire_manager.get_webots_node(source_fire)
+        if not node:
+            return
+
+        pos = node.getField("translation").getSFVec3f()
+        
+        # 확산 방향 및 거리 계산
+        angle = random.uniform(0, 2 * math.pi)
+        distance = random.uniform(self.fire_spread_distance_min, self.fire_spread_distance_max)
+        new_x = round(pos[0] + distance * math.cos(angle), 2)
+        new_y = round(pos[1] + distance * math.sin(angle), 2)
+
+        # 맵 범위 체크
+        if abs(new_x) > self.fire_spawn_range or abs(new_y) > self.fire_spawn_range:
+            self.get_logger().debug(f"Spread position ({new_x}, {new_y}) out of range, skipping")
+            return
+
+        # 기존 Fire와 너무 가까운지 체크 (겹침 방지)
+        for other_name in active_fires:
+            other_node = self.fire_manager.get_webots_node(other_name)
+            if other_node:
+                other_pos = other_node.getField("translation").getSFVec3f()
+                dist = math.sqrt((new_x - other_pos[0])**2 + (new_y - other_pos[1])**2)
+                if dist < 2.0:  # 최소 2m 간격
+                    self.get_logger().debug(f"Too close to {other_name}, skipping spread")
+                    return
+
+        # 새 Fire 생성 (소스 Fire보다 약간 작게)
+        source_radius = self._read_fire_radius(node)
+        new_radius = round(random.uniform(0.5, max(0.5, source_radius * 0.8)), 2)
+
+        def_name = self.fire_manager.spawn_object(new_x, new_y, 0.0, radius=new_radius)
+        if def_name:
+            self._create_fire_publisher(def_name)
+            self._create_suppress_service_for_fire(def_name)
+            self.fire_total_spawned += 1
+            self.get_logger().info(f"[Spread] {source_fire} -> {def_name} at ({new_x}, {new_y}) radius={new_radius}")
 
     def _create_suppress_service_for_fire(self, def_name: str):
         """Fire suppress 서비스 생성"""

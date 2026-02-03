@@ -30,9 +30,9 @@ diffdrive_controller:
     linear:
       x:
         has_velocity_limits: true
-        max_velocity: 1.0  # Husky max speed (m/s)
+        max_velocity: 1.6  # Husky max speed (m/s)
 
     angular:
       z:
         has_velocity_limits: true
-        max_velocity: 1.0 #2.0  # Husky max angular speed (rad/s)
+        max_velocity: 1.2 #2.0  # Husky max angular speed (rad/s)
